@@ -45,7 +45,8 @@ function renderSide(){
 
   // заметки
   if(document.activeElement !== $('note')) $('note').value = data.notes[cur] || '';
-  $('note').placeholder = cur === t ? 'Мысли, идеи, итоги дня…' : `Заметки за ${human(cur)}…`;
+  $('note').readOnly = cur !== t;
+  $('note').placeholder = cur === t ? 'Мысли, идеи, итоги дня…' : cur < t ? `За ${human(cur)} записи нет. Прошедший день закрыт.` : 'Итог дня можно написать только в этот день.';
   $('tCount').textContent = data.focus[t] || 0;
 }
 $('calPrev').onclick = () => { calOff--; renderSide(); };
@@ -56,6 +57,7 @@ $('cal').addEventListener('click', e => {
 });
 let noteT;
 $('note').addEventListener('input', () => {
+  if(cur !== today()) return;
   const v = $('note').value; if(v.trim()) data.notes[cur] = v; else delete data.notes[cur];
   clearTimeout(noteT); noteT = setTimeout(() => { Store.save(data); $('noteSaved').textContent = 'сохранено'; $('noteSaved').classList.add('show'); setTimeout(()=>$('noteSaved').classList.remove('show'), 1200); }, 400);
 });
@@ -133,7 +135,7 @@ setInterval(() => {
     T.endAt = null; beep();
     if(T.mode === 'focus'){
       const t = today(); data.focus[t] = (data.focus[t]||0) + 1;
-      if(minOf('focus') >= 50) data.counters.longFocus = 1;
+      if(minOf('focus') >= 50) data.counters.longFocus++;
       data.counters.focusRun = (data.counters.focusRun||0) + 1;
       Store.save(data); renderSide(); checkAch();
       const nextLong = data.counters.focusRun % 4 === 0;

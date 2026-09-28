@@ -9,11 +9,12 @@ data.counters ||= {};
 (() => {
   const c = data.counters, done = data.tasks.filter(x => x.done);
   c.created ??= data.tasks.length;
-  c.completed ??= done.length;
+  if(c.completed === undefined){ c.completed = done.length; done.forEach(x => x.counted = true); }
   c.prioDone ??= done.filter(x => x.prio).length;
   c.early ??= done.filter(x => x.doneAt && new Date(x.doneAt).getHours() < 8).length;
   c.night ??= done.filter(x => x.doneAt && new Date(x.doneAt).getHours() >= 23).length;
   for(const k of ['carried','restoresUsed','shared','calUsed','statsOpened','reminderSet','timerCustom','avatarChanged','longFocus','focusRun']) c[k] ??= 0;
+  c.dayCount ||= {};
 })();
 data.profile ||= { username:'', avatar:'void' };
 data.ach ||= {};
@@ -123,7 +124,7 @@ function metrics(){
   }
   // суббота + воскресенье одной недели
   let weekend = 0;
-  for(const d of days){ if(parse(d).getDay() === 6 && m[d].done && m[addDays(d,1)] && m[addDays(d,1)].done){ weekend = 1; break; } }
+  for(const d of days){ if(parse(d).getDay() === 6 && m[d].done && m[addDays(d,1)] && m[addDays(d,1)].done) weekend++; }
   const fdays = Object.keys(data.focus).filter(d => data.focus[d] > 0).sort();
   let fRun = 0, fBest = 0, fPrev = null;
   for(const d of fdays){ fRun = (fPrev && addDays(fPrev,1) === d) ? fRun + 1 : 1; fBest = Math.max(fBest, fRun); fPrev = d; }
@@ -145,59 +146,45 @@ function metrics(){
 
 /* ---------- 50 достижений ---------- */
 // r: награда — {x: опыт, rest: возвраты серии, av: эксклюзивный аватар}
+// Только настоящие результаты: ничего не выдаётся за одно нажатие.
 const ACH = [
   // дела
-  ['first_task','Первый шаг','Создай первое дело','task','created',1,{x:10,rest:1}],
-  ['first_done','Сделано!','Выполни первое дело','task','completed',1,{x:10}],
   ['done10','Разгон','Выполни 10 дел','task','completed',10,{x:20}],
   ['done50','Полсотни','Выполни 50 дел','task','completed',50,{x:40,rest:1}],
   ['done100','Сотня','Выполни 100 дел','task','completed',100,{x:60,av:'chrome'}],
   ['done500','Машина','Выполни 500 дел','task','completed',500,{x:150,av:'diamond'}],
   ['done1000','Тысячник','Выполни 1000 дел','task','completed',1000,{x:300,rest:3}],
-  ['created25','Планировщик','Создай 25 дел','task','created',25,{x:20}],
-  ['created100','Архитектор дня','Создай 100 дел','task','created',100,{x:50}],
-  ['prio10','Важное — первым','Выполни 10 важных дел (с флажком)','task','prioDone',10,{x:30}],
+  ['prio25','Важное — первым','Выполни 25 важных дел (с флажком)','task','prioDone',25,{x:40}],
   // день
-  ['day5','Продуктивный день','Выполни 5 дел за один день','day','maxDoneDay',5,{x:20}],
   ['day10','Десятка','Выполни 10 дел за один день','day','maxDoneDay',10,{x:50,rest:1}],
   ['day20','Монстр продуктивности','Выполни 20 дел за один день','day','maxDoneDay',20,{x:100,av:'demon'}],
-  ['perfect1','Чистый лист','Закрой все дела дня (минимум 3)','day','perfect',1,{x:20}],
+  ['perfect3','Чистый лист','3 дня, когда закрыты все дела (от 3 дел в день)','day','perfect',3,{x:30}],
   ['perfect7','Идеальная неделя','7 идеальных дней подряд','day','perfBest',7,{x:100,rest:2}],
   ['perfect30','Перфекционист','30 идеальных дней всего','day','perfect',30,{x:150,av:'angel'}],
-  ['early','Жаворонок','Выполни дело до 8:00','day','early',1,{x:20}],
-  ['night','Ночная тень','Выполни дело после 23:00','day','night',1,{x:20}],
-  ['weekend','Без выходных','Выполняй дела в субботу и воскресенье одной недели','day','weekend',1,{x:30}],
-  ['carry','Долги закрыты','Перенеси несделанные дела на сегодня','day','carried',1,{x:10}],
+  ['early10','Жаворонок','10 раз выполни дело до 8:00','day','early',10,{x:40}],
+  ['weekend4','Без выходных','4 выходных, когда дела сделаны и в субботу, и в воскресенье','day','weekend',4,{x:50}],
   // серия
-  ['streak3','Разогрев','Серия 3 дня подряд','streak','best',3,{x:20}],
   ['streak7','Неделя в режиме','Серия 7 дней подряд','streak','best',7,{x:50,rest:1}],
   ['streak14','Две недели','Серия 14 дней подряд','streak','best',14,{x:80,rest:1}],
   ['streak30','Месяц призрака','Серия 30 дней подряд','streak','best',30,{x:150,av:'flame'}],
+  ['streak60','Два месяца','Серия 60 дней подряд','streak','best',60,{x:250,rest:2}],
   ['streak100','Сто дней тени','Серия 100 дней подряд','streak','best',100,{x:400,av:'king'}],
-  ['restore1','Второй шанс','Используй возврат серии','streak','restoresUsed',1,{x:10}],
   ['active50','Постоянство','50 активных дней всего','streak','active',50,{x:100,rest:1}],
+  ['active200','Образ жизни','200 активных дней всего','streak','active',200,{x:300,rest:2}],
   // фокус
-  ['focus1','Первый фокус','Заверши сессию фокуса','focus','focusTotal',1,{x:10}],
+  ['focus10','Первые шаги в фокусе','10 сессий фокуса всего','focus','focusTotal',10,{x:30}],
   ['focus5day','В потоке','5 сессий фокуса за один день','focus','focusMaxDay',5,{x:40,rest:1}],
-  ['focus25','Глубокая работа','25 сессий фокуса всего','focus','focusTotal',25,{x:50}],
-  ['focus100','Мастер фокуса','100 сессий фокуса всего','focus','focusTotal',100,{x:150,av:'astro'}],
-  ['focuslong','Марафон','Заверши фокус длиной 50+ минут','focus','longFocus',1,{x:30}],
+  ['focus50','Глубокая работа','50 сессий фокуса всего','focus','focusTotal',50,{x:80}],
+  ['focus200','Мастер фокуса','200 сессий фокуса всего','focus','focusTotal',200,{x:200,av:'astro'}],
   ['focusweek','Фокус-неделя','Сессии фокуса 7 дней подряд','focus','focusStreak',7,{x:80,av:'neon'}],
+  ['focuslong','Марафонец','10 сессий фокуса длиной 50+ минут','focus','longFocus',10,{x:60}],
   // альбом
-  ['note1','Первая мысль','Напиши первый итог дня','album','notes',1,{x:10}],
-  ['note7','Дневник','Заполняй альбом 7 дней подряд','album','notesStreak',7,{x:50,rest:1}],
+  ['note7','Дневник','Пиши итог дня 7 дней подряд','album','notesStreak',7,{x:50,rest:1}],
   ['note30','Летописец','30 записей в альбоме','album','notes',30,{x:100,av:'sage'}],
-  ['notelong','Философ','Запись длиннее 500 символов','album','longNote',1,{x:20}],
-  ['share1','Поделился','Поделись записью из альбома','album','shared',1,{x:10}],
-  // профиль и изучение
-  ['uname','Новое имя','Выбери username','user','username',1,{x:10}],
-  ['avatar','Новый облик','Смени аватар','user','avatarChanged',1,{x:10}],
-  ['calendar','Навигатор','Открой день через календарь','user','calUsed',1,{x:10}],
-  ['stats','Аналитик','Загляни в статистику','user','statsOpened',1,{x:10}],
-  ['remind','Будильник','Поставь напоминание делу','user','reminderSet',1,{x:10}],
-  ['timer','Настройщик','Настрой своё время таймера','user','timerCustom',1,{x:10}],
-  ['ach25','Коллекционер','Открой 25 достижений','star','achCount',25,{x:100,rest:2}],
-  ['ach40','Легенда Ghost Mode','Открой 40 достижений','star','achCount',40,{x:500,av:'legend'}],
+  ['note100','Хроники призрака','100 записей в альбоме','album','notes',100,{x:250,rest:2}],
+  // коллекция
+  ['ach15','Коллекционер','Открой 15 достижений','star','achCount',15,{x:100,rest:2}],
+  ['ach28','Легенда Ghost Mode','Открой 28 достижений','star','achCount',28,{x:500,av:'legend'}],
   // скоро — с сервером
   ['fire1','Огонёк','Заведи первый огонёк с другом','friend','soon',1,{x:30,rest:1},1],
   ['fire7','Неделя вдвоём','Продли огонёк на 7 дней','friend','soon',1,{x:60,rest:1},1],
@@ -205,7 +192,9 @@ const ACH = [
   ['import','Импорт','Импортируй расписание из .txt','file','soon',1,{x:20},1],
 ].map(([id,title,desc,icon,metric,target,r,soon]) => ({id,title,desc,icon,metric,target,r,soon}));
 
-const LEVELS = [[0,'Новичок'],[100,'Тень'],[300,'Призрак'],[700,'Фантом'],[1500,'Дух'],[3000,'Легенда']];
+const LEVELS = [[0,'Новичок'],[150,'Тень'],[400,'Призрак'],[900,'Фантом'],[1800,'Дух'],[3200,'Легенда']];
+// убрать достижения, которых больше нет в списке
+for(const id in data.ach) if(!ACH.some(a => a.id === id)) delete data.ach[id];
 const xpTotal = () => ACH.filter(a => data.ach[a.id]).reduce((s,a) => s + a.r.x, 0);
 function levelOf(xp){ let i = 0; while(i < LEVELS.length-1 && xp >= LEVELS[i+1][0]) i++; return i; }
 const avUnlocked = id => { const a = AVATARS.find(x => x.id === id); if(!a || !a.ex) return true; return ACH.some(x => x.r.av === id && data.ach[x.id]); };

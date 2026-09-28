@@ -91,20 +91,29 @@ function renderDay(){
   $('alldone').hidden = !(list.length && done === list.length);
   renderWeek();
 
-  // несделанные из прошлого
-  const past = data.tasks.filter(x => !x.done && x.date < t);
+  // несделанные из прошлого (ещё не перенесённые)
+  const past = data.tasks.filter(x => !x.done && !x.carried && x.date < t);
   const showCarry = cur === t && past.length > 0;
   $('carry').hidden = !showCarry;
   if(showCarry) $('carryText').textContent = `Из прошлых дней осталось ${past.length} ${plural(past.length,'несделанное дело','несделанных дела','несделанных дел')}`;
 
-  const isPast = cur < t;
+  const isPast = cur < t, isFuture = cur > t;
+  // прошедшие дни закрыты: смотреть можно, менять нельзя
+  $('addForm').hidden = isPast;
+  document.querySelector('.hint').hidden = isPast;
+  $('lockNote').hidden = !isPast && !isFuture;
+  $('lockNote').innerHTML = isPast
+    ? '<b>День закрыт.</b> Прошедшие дни нельзя изменить — так серия и огоньки остаются честными. Несделанное можно перенести на сегодня.'
+    : '<b>План на будущее.</b> Дела можно добавлять и менять, а отметить выполненными — только в свой день.';
+  document.body.classList.toggle('day-past', isPast);
+  document.body.classList.toggle('day-future', isFuture);
   const sortFn = (a,b) => (b.prio?1:0)-(a.prio?1:0) || a.created - b.created;
   const open = list.filter(x=>!x.done).sort(sortFn);
   const closed = list.filter(x=>x.done).sort((a,b)=>(a.doneAt||0)-(b.doneAt||0));
 
   let html = '';
   if(!list.length){
-    html = `<div class="empty"><img src="${GM_IMG}" alt=""><div class="big">${isPast ? 'В этот день дел не было' : 'Дел пока нет'}</div>${isPast?'':'Запишите первое дело — нажмите <kbd>/</kbd>'}</div>`;
+    html = `<div class="empty"><img src="${GM_IMG}" alt=""><div class="big">${isPast ? 'В этот день дел не было' : 'Дел пока нет'}</div>${isPast?'':'Запиши первое дело — нажми <kbd>/</kbd>'}</div>`;
   } else {
     let n = 0;
     if(open.length) html += `<div class="group-title">${isPast?'Не сделано':'В работе'} <b>${open.length}</b></div><ul class="tasks">${open.map(x=>item(x,isPast,n++)).join('')}</ul>`;
@@ -112,6 +121,7 @@ function renderDay(){
   }
   $('lists').innerHTML = html;
   if(popId){ const el = $('lists').querySelector(`[data-id="${popId}"]`); if(el) el.classList.add('pop'); popId = null; }
+  if(typeof renderSide === 'function') renderSide();
 }
 
 function renderWeek(){
@@ -128,29 +138,56 @@ function renderWeek(){
 $('week').addEventListener('click', e => { const b = e.target.closest('.wd'); if(b){ cur = b.dataset.d; renderDay(); } });
 
 function item(x, isPast, i){
-  const tomorrowBtn = !x.done ? `<button data-a="move" title="${isPast?'Перенести на сегодня':'Перенести на завтра'}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>` : '';
-  return `<li class="task ${x.done?'done':''} ${x.prio?'prio':''}" data-id="${x.id}" style="--i:${i}">
-    <button class="check" data-a="toggle" aria-label="${x.done?'Отметить несделанным':'Отметить сделанным'}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050506" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+  const isFuture = x.date > today();
+  const ic = {
+    move:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+    edit:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg>',
+    bell:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>',
+    del:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/></svg>',
+    lock:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'
+  };
+  let acts = '';
+  if(isPast){
+    if(!x.done && !x.carried) acts = `<button data-a="move" title="Перенести копию на сегодня">${ic.move}</button>`;
+  } else {
+    acts = `<button data-a="edit" title="Редактировать">${ic.edit}</button>`
+      + (!x.done && !isFuture ? `<button data-a="remind" title="Напоминание">${ic.bell}</button>` : '')
+      + (!x.done ? `<button data-a="move" title="Перенести на завтра">${ic.move}</button>` : '')
+      + `<button data-a="del" class="del" title="Удалить">${ic.del}</button>`;
+  }
+  const badge = isPast && !x.done ? `<span class="missed">${x.carried ? 'перенесено' : 'не сделано'}</span>` : '';
+  return `<li class="task ${x.done?'done':''} ${x.prio?'prio':''} ${isPast?'locked':''} ${isFuture?'future':''}" data-id="${x.id}" style="--i:${i}">
+    <button class="check" data-a="toggle" ${isPast||isFuture?'disabled':''} aria-label="${x.done?'Отметить несделанным':'Отметить сделанным'}" title="${isPast?'Прошедший день закрыт':isFuture?'Отметить можно только в этот день':''}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050506" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
     ${x.prio?'<svg class="flag" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M5 21V4h11l-1.5 4L16 12H7v9z"/></svg>':''}
     <span class="title">${esc(x.title)}</span>
-    ${x.remind && !x.done ? `<span class="bell"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/></svg>${x.remind}</span>` : ''}
-    ${isPast && !x.done ? '<span class="missed">не сделано</span>' : ''}
-    <span class="acts">
-      <button data-a="edit" title="Редактировать"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg></button>
-      ${!x.done ? `<button data-a="remind" title="Напоминание"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></button>` : ''}
-      ${tomorrowBtn}
-      <button data-a="del" class="del" title="Удалить"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/></svg></button>
-    </span>
+    ${x.remind && !x.done && !isPast ? `<span class="bell"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/></svg>${x.remind}</span>` : ''}
+    ${badge}
+    ${isPast ? `<span class="lock-ic" title="Прошедший день закрыт">${ic.lock}</span>` : ''}
+    <span class="acts">${acts}</span>
   </li>`;
 }
+
+// можно ли менять дело: только сегодня и будущее
+const editable = x => x.date >= today();
 
 $('lists').addEventListener('click', e => {
   const btn = e.target.closest('[data-a]'); if(!btn) return;
   const li = btn.closest('.task'); const t = data.tasks.find(x => x.id === li.dataset.id); if(!t) return;
   const a = btn.dataset.a;
+  if(!editable(t) && !(a==='move' && !t.done && !t.carried)){ toast('Прошедший день закрыт — его нельзя изменить'); return; }
+  if(a==='toggle' && t.date !== today()){ toast('Отметить дело можно только в его день'); return; }
   if(a==='toggle'){
     t.done = !t.done; t.doneAt = t.done ? Date.now() : null;
-    if(t.done){ popId = t.id; const c = data.counters; c.completed++; if(t.prio) c.prioDone++; const h = new Date().getHours(); if(h < 8) c.early++; if(h >= 23) c.night++; }
+    if(t.done){
+      popId = t.id;
+      // в достижения засчитывается каждое дело один раз и не больше 25 дел в день — чтобы нельзя было накрутить
+      const c = data.counters, d = today(); c.dayCount[d] ||= 0;
+      if(!t.counted && c.dayCount[d] < 25){
+        t.counted = true; c.dayCount[d]++; c.completed++;
+        if(t.prio) c.prioDone++;
+        if(new Date().getHours() < 8) c.early++;
+      }
+    }
     commit();
   }
   if(a==='remind') openRemind(t);
@@ -160,15 +197,14 @@ $('lists').addEventListener('click', e => {
     toast('Дело удалено', true);
   }
   if(a==='move'){
-    const target = cur < today() ? today() : addDays(cur, 1);
-    t.date = target; commit();
-    toast(`Перенесено на ${target===today()?'сегодня':'завтра'}`);
+    if(t.date < today()){ carryTask(t); commit(); toast('Копия дела перенесена на сегодня'); }
+    else { t.date = addDays(t.date, 1); delete t.remind; commit(); toast('Перенесено на следующий день'); }
   }
   if(a==='edit') startEdit(li, t);
 });
 $('lists').addEventListener('dblclick', e => {
   const li = e.target.closest('.task'); if(!li || e.target.closest('[data-a]')) return;
-  const t = data.tasks.find(x => x.id === li.dataset.id); if(t) startEdit(li, t);
+  const t = data.tasks.find(x => x.id === li.dataset.id); if(t && editable(t)) startEdit(li, t);
 });
 function startEdit(li, t){
   const el = li.querySelector('.title');
@@ -189,6 +225,7 @@ function startEdit(li, t){
 $('addForm').onsubmit = e => {
   e.preventDefault();
   const v = $('addInput').value.trim(); if(!v) return;
+  if(cur < today()){ toast('В прошедший день нельзя добавлять дела'); return; }
   data.tasks.push({ id: uid(), title: v, date: cur, done: false, doneAt: null, prio, created: Date.now() });
   data.counters.created++;
   $('addInput').value = ''; prio = false; $('prioBtn').classList.remove('on');
@@ -197,10 +234,15 @@ $('addForm').onsubmit = e => {
 $('prioBtn').onclick = () => { prio = !prio; $('prioBtn').classList.toggle('on', prio); $('addInput').focus(); };
 $('carryBtn').onclick = () => {
   const t = today(); let n = 0;
-  data.tasks.forEach(x => { if(!x.done && x.date < t){ x.date = t; n++; } });
+  data.tasks.filter(x => !x.done && !x.carried && x.date < t).forEach(x => { carryTask(x); n++; });
   if(n) data.counters.carried++;
   commit(); toast(`Перенесено: ${n}`);
 };
+// перенос из прошлого: в прошлом дело остаётся «не сделано / перенесено», на сегодня создаётся копия
+function carryTask(x){
+  x.carried = true;
+  data.tasks.push({ id: uid(), title: x.title, date: today(), done: false, doneAt: null, prio: x.prio, created: Date.now(), from: x.date });
+}
 $('prevDay').onclick = () => { cur = addDays(cur,-1); renderDay(); };
 $('nextDay').onclick = () => { cur = addDays(cur, 1); renderDay(); };
 $('toToday').onclick = () => { cur = today(); renderDay(); };
@@ -224,7 +266,7 @@ function toast(text, undo){
   clearTimeout(toastTimer); toastTimer = setTimeout(()=>$('toast').classList.remove('show'), 4000);
 }
 $('toastUndo').onclick = () => {
-  if(lastDeleted){ data.tasks.push(lastDeleted); lastDeleted = null; commit(); }
+  if(lastDeleted && editable(lastDeleted)){ data.tasks.push(lastDeleted); lastDeleted = null; commit(); }
   $('toast').classList.remove('show');
 };
 
@@ -234,20 +276,4 @@ document.addEventListener('click', e => { if(!e.target.closest('#menu')) $('menu
 $('wipeBtn').onclick = () => {
   $('menu').classList.remove('open');
   if(confirm('Удалить все дела? Это нельзя отменить.')){ data = {...data, tasks:[], notes:{}, focus:{}, restored:[]}; commit(); }
-};
-$('demoBtn').onclick = () => {
-  $('menu').classList.remove('open');
-  const pool = ['Тренировка','Позвонить клиенту','Отправить КП','Прочитать 20 страниц','Английский 30 минут','Проверить почту','Сверка с бухгалтерией','Заказать материалы','Разобрать документы','Прогулка','Выезд на объект','Совещание'];
-  const t = today();
-  for(let i=100;i>=1;i--){
-    const d = addDays(t,-i);
-    if(Math.random()<.12) continue;
-    const n = 2 + Math.floor(Math.random()*5);
-    const wd = parse(d).getDay(); const bias = (wd===0||wd===6) ? .5 : .78;
-    for(let k=0;k<n;k++){
-      const done = Math.random() < bias;
-      data.tasks.push({id:uid(), title: pool[Math.floor(Math.random()*pool.length)], date:d, done, doneAt: done?parse(d).getTime()+36e6:null, prio: Math.random()<.15, created: parse(d).getTime()+k});
-    }
-  }
-  commit(); toast('Добавлены примерные дела за 100 дней');
 };
