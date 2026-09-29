@@ -2,7 +2,8 @@
    Разработано Veraxis */
 const safeAv = id => AVATARS.some(a => a.id === id) ? id : 'void';
 const avImg = (id, cls) => `<img class="${cls}" src="${avatarURL(safeAv(id))}" alt="">`;
-let duo = null, lbBy = 'score', lbRows = [], pushT = null, tdMsg = '';
+let duo = null, lbBy = 'score', lbRows = [], pushT = null, tdMsg = '', pTasks = null, albumRows = null, albumMode = 'mine';
+data.settings ||= {}; if(data.settings.shareToday === undefined) data.settings.shareToday = true;
 const friendsOn = () => $('view-friends').classList.contains('on');
 
 /* ---------- отправка статистики (день определяет сервер) ---------- */
@@ -34,8 +35,11 @@ async function refreshDuo(){
   if(a){
     const b = Math.max(a.best || 0, a.streak || 0);
     if(b > (data.counters.duoBest || 0)){ data.counters.duoBest = b; Store.save(data); checkAch(); }
-  }
+    const pt = await sb.rpc('duo_partner_tasks', { p_day: today() });
+    pTasks = pt.error ? null : pt.data;
+  } else pTasks = null;
   renderTandem();
+  if(albumMode === 'duo' && $('view-album').classList.contains('on')) renderDuoAlbum();
 }
 
 function renderTandem(){
@@ -59,9 +63,18 @@ function renderTandem(){
         <span class="${a.partner_today ? 'ok' : ''}">${pn}: ${a.partner_today ? 'сегодня готово' : 'ещё не сделал(а) дело'}</span>
       </div>
       <div class="td-dots">${dots}</div>
+      <div class="td-tasks">
+        <div class="td-sub"><b>Дела ${pn} на сегодня</b>${pTasks && pTasks.shared && pTasks.tasks.length ? `<span>${pTasks.tasks.filter(x => x.done).length} из ${pTasks.tasks.length}</span>` : ''}</div>
+        ${!pTasks ? '<p class="td-note">Загружаю…</p>'
+          : !pTasks.shared ? `<p class="td-note">${pn} скрыл(а) свои дела.</p>`
+          : !pTasks.tasks.length ? `<p class="td-note">На сегодня у ${pn} пока нет дел.</p>`
+          : '<ul class="td-list">' + pTasks.tasks.map(x => `<li class="${x.done ? 'done' : ''}"><i></i><span>${esc(x.title)}</span>${x.prio ? '<em>важное</em>' : ''}</li>`).join('') + '</ul>'}
+      </div>
+      <label class="td-share"><input type="checkbox" id="tdShare" ${data.settings.shareToday !== false ? 'checked' : ''}><span>Показывать ${pn} мои дела на сегодня</span></label>
       <p class="td-note">${a.lost ? 'Серия прервалась: вчера кто-то из вас пропустил день. Начните заново сегодня. ' : ''}Серия растёт, когда вы оба закрыли хотя бы одно дело за день. Рекорд: ${Math.max(a.best, a.streak)}.</p>
       <button class="td-leave" id="tdLeave">Выйти из Тандема</button>`;
     $('tdLeave').onclick = () => openLeave(a, p.username);
+    $('tdShare').onchange = e => { data.settings.shareToday = e.target.checked; Store.save(data); toast(e.target.checked ? 'Друг видит твои дела на сегодня' : 'Твои дела скрыты от друга'); };
     return;
   }
   let html = '<div class="td-head"><b>Тандем</b><span>серия на двоих</span></div>';
@@ -90,7 +103,7 @@ function renderTandem(){
 }
 
 function openLeave(a, name){
-  $('leaveText').textContent = `Общая серия (${a.streak} ${plural(a.streak, 'день', 'дня', 'дней')}) сотрётся у вас обоих, и ${name} увидит, что Тандем закончился. Вернуть его нельзя.`;
+  $('leaveText').textContent = `Общая серия (${a.streak} ${plural(a.streak, 'день', 'дня', 'дней')}) и общий альбом сотрутся у вас обоих, и ${name} увидит, что Тандем закончился. Вернуть это нельзя.`;
   $('leaveModal').hidden = false;
 }
 $('leaveNo').onclick = () => { $('leaveModal').hidden = true; };
@@ -102,6 +115,70 @@ $('leaveYes').onclick = async () => {
   toast(r.error ? 'Не получилось выйти, попробуй ещё раз' : 'Ты вышел из Тандема');
   tdMsg = ''; await refreshDuo();
 };
+
+/* ---------- общий альбом ---------- */
+const ALB_ERR = { no_duo: 'Общий альбом есть только в Тандеме', empty: 'Запись пустая', too_long: 'Слишком длинно — до 2000 символов', limit: 'Лимит: 30 записей в сутки', duplicate: 'Эта запись уже в общем альбоме' };
+const albErr = e => ALB_ERR[(e && e.message) || ''] || 'Не получилось, попробуй ещё раз';
+async function loadDuoAlbum(){
+  const r = await sb.rpc('album_list');
+  albumRows = r.error ? [] : (r.data || []);
+  renderDuoAlbum();
+}
+function renderDuoAlbum(){
+  const box = $('albumDuo');
+  if(!duo){ box.innerHTML = '<p class="td-note">Загружаю…</p>'; return; }
+  const a = duo.active;
+  if(!a){
+    box.innerHTML = `<div class="empty glass"><img src="${GM_IMG}" alt=""><div class="big">Общего альбома пока нет</div>Он появится, когда вы с другом начнёте Тандем.<br><button class="btn-w" id="goFriends" style="margin-top:14px">Перейти в «Друзья»</button></div>`;
+    $('goFriends').onclick = () => document.querySelector('.tab[data-view="friends"]').click();
+    return;
+  }
+  const pn = esc((a.partner || {}).username || '');
+  let h = `<div class="glass duo-compose">
+    <div class="td-sub"><b>Альбом на двоих</b><span>ты и ${pn}</span></div>
+    <textarea id="duoText" maxlength="2000" placeholder="Мысль, итог дня, что-то важное — ${pn} увидит это…"></textarea>
+    <div class="duo-row"><span class="td-msg" id="duoMsg"></span><button class="btn-w" id="duoPost">Добавить</button></div>
+  </div>`;
+  if(albumRows === null) h += '<p class="td-note">Загружаю…</p>';
+  else if(!albumRows.length) h += `<div class="empty"><div class="big">Пока пусто</div>Напишите первую запись — или нажмите «В общий альбом» под своей записью в «Мои записи».</div>`;
+  else h += albumRows.map((r, i) => `<article class="entry glass duo-entry${r.mine ? ' mine' : ''}" style="--i:${Math.min(i,10)}">
+      <div class="entry-h"><div class="duo-author">${avImg(r.avatar, 'td-sm')}<div class="entry-date"><span>${esc(r.username)}${r.mine ? ' · ты' : ''}</span><b>${WD[parse(r.day).getDay()]}, ${human(r.day)}</b></div></div></div>
+      <div class="entry-text">${esc(r.text)}</div>
+      ${r.mine ? `<div class="entry-acts"><button data-del="${r.id}">Удалить</button></div>` : ''}</article>`).join('');
+  box.innerHTML = h;
+  $('duoPost').onclick = async () => {
+    const t = $('duoText').value.trim(); if(!t) return;
+    $('duoPost').disabled = true;
+    const r = await sb.rpc('album_post', { p_text: t, p_day: today() });
+    $('duoPost').disabled = false;
+    if(r.error){ $('duoMsg').textContent = albErr(r.error); return; }
+    data.counters.shared++; Store.save(data); checkAch();
+    loadDuoAlbum();
+  };
+  box.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if(b.dataset.sure !== '1'){ b.dataset.sure = '1'; b.textContent = 'Точно удалить?'; setTimeout(() => { b.dataset.sure = ''; b.textContent = 'Удалить'; }, 3000); return; }
+    await sb.rpc('album_delete', { p_id: b.dataset.del }); loadDuoAlbum();
+  });
+}
+function setAlbumMode(m){
+  albumMode = m;
+  $('albumMode').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.a === m));
+  $('albumMine').hidden = m !== 'mine'; $('albumDuo').hidden = m !== 'duo';
+  if(m === 'duo'){ renderDuoAlbum(); loadDuoAlbum(); if(!duo) refreshDuo(); }
+}
+$('albumMode').addEventListener('click', e => { const b = e.target.closest('button'); if(b) setAlbumMode(b.dataset.a); });
+$('albumList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-duo]'); if(!b) return;
+  if(!duo || !duo.active){ toast('Общий альбом появится, когда начнёшь Тандем с другом'); return; }
+  const d = b.dataset.duo, text = (data.notes[d] || '').trim(); if(!text) return;
+  b.disabled = true;
+  const r = await sb.rpc('album_post', { p_text: text, p_day: d });
+  b.disabled = false;
+  if(r.error){ toast(albErr(r.error)); return; }
+  data.counters.shared++; Store.save(data); checkAch();
+  b.textContent = 'Добавлено ✓'; toast('Запись в общем альбоме');
+  albumRows = null;
+});
 
 /* ---------- рейтинг ---------- */
 async function refreshLb(){
@@ -127,5 +204,9 @@ $('lbSeg').addEventListener('click', e => {
 
 /* ---------- запуск ---------- */
 document.querySelector('.tab[data-view="friends"]').addEventListener('click', () => { pushStats(); refreshDuo(); refreshLb(); });
-setInterval(() => { if(friendsOn() && document.visibilityState === 'visible'){ refreshDuo(); refreshLb(); } }, 20000);
+setInterval(() => {
+  if(document.visibilityState !== 'visible') return;
+  if(friendsOn()){ refreshDuo(); refreshLb(); }
+  if(albumMode === 'duo' && $('view-album').classList.contains('on')) loadDuoAlbum();
+}, 20000);
 pushStats(); refreshDuo();

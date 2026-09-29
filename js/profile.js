@@ -310,7 +310,7 @@ function renderAlbum(){
       <div class="entry-date"><span>${WD[parse(d).getDay()]}</span><b>${human(d)} ${parse(d).getFullYear()}</b></div>
       ${v ? `<div class="entry-meta">✓ ${v.done} из ${v.total} дел</div>` : ''}
     </div><div class="entry-text">${hl(data.notes[d])}</div>
-    <div class="entry-acts"><button data-open="${d}">Открыть день</button><button data-share="${d}">Поделиться</button></div></article>`; }).join('');
+    <div class="entry-acts"><button data-open="${d}">Открыть день</button><button data-share="${d}">Поделиться</button><button data-duo="${d}">В общий альбом</button></div></article>`; }).join('');
 }
 $('albumSearch').addEventListener('input', renderAlbum);
 $('albumMonths').addEventListener('click', e => { const b = e.target.closest('button'); if(b){ albumMonth = b.dataset.m; renderAlbum(); } });

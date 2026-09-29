@@ -275,7 +275,3 @@ $('toastUndo').onclick = () => {
 /* ---------- меню ---------- */
 $('menuBtn').onclick = e => { e.stopPropagation(); $('menu').classList.toggle('open'); };
 document.addEventListener('click', e => { if(!e.target.closest('#menu')) $('menu').classList.remove('open'); });
-$('wipeBtn').onclick = () => {
-  $('menu').classList.remove('open');
-  if(confirm('Удалить все дела? Это нельзя отменить.')){ data = {...data, tasks:[], notes:{}, focus:{}, restored:[]}; commit(); }
-};

@@ -46,7 +46,6 @@
     <div class="menu" id="menu">
       <div class="acct"><span id="acctLine"></span><small id="syncState"></small></div>
       <button id="logoutBtn">Выйти из аккаунта</button>
-      <button id="wipeBtn" class="danger">✕ Удалить все дела</button>
     </div>
   </div>
 </header>
@@ -183,17 +182,17 @@
           <h1>Альбом</h1>
           <p class="page-sub">Мысли и итоги дня. Перечитывай, вспоминай, делись.</p>
         </div>
-        <button class="btn-w" id="albumWrite">Написать итог дня</button>
+        <div class="seg" id="albumMode"><button data-a="mine" class="on">Мои записи</button><button data-a="duo">Общий</button></div>
       </div>
+      <div id="albumMine">
       <div class="album-tools">
         <input type="search" id="albumSearch" placeholder="Поиск по записям…">
         <div class="seg" id="albumMonths"></div>
+        <button class="btn-w" id="albumWrite">Написать итог дня</button>
       </div>
       <div id="albumList"></div>
-      <div class="future glass">
-        <b>Общий альбом с другом</b>
-        <span>Появится вместе с огоньками, когда подключим сервер.</span>
       </div>
+      <div id="albumDuo" hidden></div>
     </section>
 
     <!-- PROFILE -->
