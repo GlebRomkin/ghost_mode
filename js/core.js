@@ -7,14 +7,16 @@
    не поменяется.
    ========================================================= */
 const Store = {
-  KEY: 'veraxis-todo-v1',
+  KEY: window.GM_KEY || 'veraxis-todo-v1',
   load(){
     try{ const d = JSON.parse(localStorage.getItem(this.KEY)); if(d && Array.isArray(d.tasks)) return d; }catch(e){}
     return { tasks: [], notes: {}, focus: {} };
   },
   save(data){
+    data._ts = Date.now();
     try{ localStorage.setItem(this.KEY, JSON.stringify(data)); }
     catch(e){ toast('Не удалось сохранить — память браузера недоступна'); }
+    if(window.GMCloud) window.GMCloud.push(data);
   }
 };
 
