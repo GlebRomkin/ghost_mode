@@ -76,7 +76,7 @@ function tDraw(){
   $('tFill').style.strokeDashoffset = 339.3 * (1 - T.left / T.total);
   $('tStart').textContent = T.endAt ? 'Пауза' : (T.left < T.total ? 'Продолжить' : 'Старт');
   document.querySelector('.timer').classList.toggle('run', !!T.endAt);
-  document.title = T.endAt ? `${fmt(Math.ceil(T.left))} · GM` : 'GM — Ghost Mode';
+  document.title = T.endAt ? `${fmt(Math.ceil(T.left))} · Ghost Mode` : 'Ghost Mode';
 }
 function tSet(mode){ T.mode = mode; T.total = T.left = minOf(mode)*60; T.endAt = null;
   document.querySelectorAll('.t-modes button').forEach(b => b.classList.toggle('on', b.dataset.m === mode)); tDraw(); }
