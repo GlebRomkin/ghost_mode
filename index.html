@@ -37,6 +37,7 @@
       <button class="tab on" data-view="today"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>День</span></button>
       <button class="tab" data-view="stats"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Статистика</span></button>
       <button class="tab" data-view="album"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg><span>Альбом</span></button>
+      <button class="tab" data-view="friends"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 5.2a3 3 0 0 1 0 5.6M18 14.8c1.8.7 3 2.4 3 5.2"/></svg><span>Друзья</span></button>
       <button class="tab" data-view="profile"><img class="tab-av" id="tabAv" alt=""><span>Профиль</span></button>
     </nav>
     <button class="icon-btn" id="menuBtn" aria-label="Меню">
@@ -196,6 +197,21 @@
     </section>
 
     <!-- PROFILE -->
+    <section class="view" id="view-friends">
+      <div class="stats-head">
+        <div>
+          <h1>Друзья</h1>
+          <p class="page-sub">Тандем с другом и рейтинг. В рейтинге видны только ник, уровень и очки.</p>
+        </div>
+      </div>
+      <div id="tandem" class="glass tandem"></div>
+      <div class="stats-head lb-head">
+        <div><h2 class="lb-title">Рейтинг</h2></div>
+        <div class="seg" id="lbSeg"><button data-by="score" class="on">Очки</button><button data-by="streak">Серия</button></div>
+      </div>
+      <div id="lbList" class="glass lb"></div>
+    </section>
+
     <section class="view" id="view-profile">
       <div class="prof glass">
         <div class="prof-av" id="profAv"></div>
@@ -273,6 +289,14 @@
 
 <div id="tip"></div>
 <div class="ach-pop" id="achPop"></div>
+<div class="modal" id="leaveModal" hidden>
+  <div class="modal-card glass">
+    <b>Выйти из Тандема?</b>
+    <span class="modal-sub" id="leaveText"></span>
+    <div class="modal-btns"><button class="t-def" id="leaveNo">Остаться</button><button class="t-ok danger" id="leaveYes">Выйти</button></div>
+  </div>
+</div>
+
 <div class="modal" id="remModal" hidden>
   <div class="modal-card glass">
     <b>Напоминание</b>
