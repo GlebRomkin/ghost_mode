@@ -3,7 +3,7 @@
 const GM_SB_URL = 'https://sveeyihjszzfqrqgasjq.supabase.co';
 const GM_SB_KEY = 'sb_publishable_kFhKa-XQ2bSHWsnWUrPzJg_I6jXiSRn'; // публичный ключ, его можно держать в коде
 const LEGACY_KEY = 'veraxis-todo-v1';
-const APP_SCRIPTS = ['js/core.js','js/stats.js','js/profile.js','js/main.js'];
+const APP_SCRIPTS = ['js/core.js','js/stats.js','js/profile.js','js/main.js','js/social.js'];
 
 const $a = id => document.getElementById(id);
 let sb = null, me = null;

@@ -140,7 +140,7 @@ function metrics(){
     notes: notes.length, notesStreak: nBest, longNote: notes.some(d => data.notes[d].length >= 500) ? 1 : 0, shared: c.shared,
     username: data.profile.username ? 1 : 0, avatarChanged: c.avatarChanged, calUsed: c.calUsed, statsOpened: c.statsOpened,
     reminderSet: c.reminderSet, timerCustom: c.timerCustom,
-    achCount: Object.keys(data.ach).length, soon: 0
+    achCount: Object.keys(data.ach).length, duoBest: c.duoBest || 0, soon: 0
   };
 }
 
@@ -186,9 +186,9 @@ const ACH = [
   ['ach15','Коллекционер','Открой 15 достижений','star','achCount',15,{x:100,rest:2}],
   ['ach28','Легенда Ghost Mode','Открой 28 достижений','star','achCount',28,{x:500,av:'legend'}],
   // скоро — с сервером
-  ['fire1','Огонёк','Заведи первый огонёк с другом','friend','soon',1,{x:30,rest:1},1],
-  ['fire7','Неделя вдвоём','Продли огонёк на 7 дней','friend','soon',1,{x:60,rest:1},1],
-  ['fire30','Месяц вдвоём','Продли огонёк на 30 дней','friend','soon',1,{x:150,rest:2},1],
+  ['fire1','Тандем','Проведи первый день вдвоём с другом в Тандеме','friend','duoBest',1,{x:30,rest:1}],
+  ['fire7','Неделя вдвоём','Держи Тандем 7 дней подряд','friend','duoBest',7,{x:60,rest:1}],
+  ['fire30','Месяц вдвоём','Держи Тандем 30 дней подряд','friend','duoBest',30,{x:150,rest:2}],
   ['import','Импорт','Импортируй расписание из .txt','file','soon',1,{x:20},1],
 ].map(([id,title,desc,icon,metric,target,r,soon]) => ({id,title,desc,icon,metric,target,r,soon}));
 
