@@ -501,3 +501,49 @@ body.noapp > *:not(.grain):not(#authScreen):not(script){display:none!important}
 .menu .acct span{font-size:13px;font-weight:600;word-break:break-all}
 .menu .acct small{font-size:11px;color:var(--ink-3)}
 .menu .acct small.err{color:var(--danger)}
+
+/* ---------- друзья: Тандем и рейтинг ---------- */
+.tandem{padding:22px;display:flex;flex-direction:column;gap:14px;margin-bottom:26px}
+.td-head{display:flex;justify-content:space-between;align-items:baseline}
+.td-head b{font-size:18px}.td-head span{font-size:12px;color:var(--ink-3)}
+.td-main{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.td-who{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;flex:1}
+.td-who span{font-size:13px;color:var(--ink-2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td-av{width:64px;height:64px;border-radius:50%;border:1px solid var(--line-2)}
+.td-sm{width:36px;height:36px;border-radius:50%;flex:none}
+.td-flame{display:flex;flex-direction:column;align-items:center;flex:1.2}
+.td-flame b{font-size:56px;line-height:1;letter-spacing:-.04em;background:linear-gradient(180deg,#fff 30%,#8e8e96);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 30px rgba(255,255,255,.18)}
+.td-flame span{font-size:12px;color:var(--ink-3);margin-top:4px}
+.td-status{display:flex;gap:8px;flex-wrap:wrap}
+.td-status span{flex:1;min-width:140px;font-size:13px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);color:var(--ink-3)}
+.td-status span.ok{color:var(--ink);border-color:var(--line-2);background:var(--accent-soft)}
+.td-dots{display:flex;gap:5px;justify-content:center}
+.td-col{display:flex;flex-direction:column;gap:3px;padding:3px;border-radius:7px}
+.td-col i{width:12px;height:12px;border-radius:4px;background:#16161a}
+.td-col i.on{background:#6a6a74}
+.td-col.both i.on{background:#f2f2f4;box-shadow:0 0 8px rgba(255,255,255,.35)}
+.td-col.pre{opacity:.35}
+.td-note{margin:0;font-size:13px;color:var(--ink-3);line-height:1.5}
+.td-msg{min-height:16px;font-size:13px;color:var(--ink-2)}
+.td-form{display:flex;gap:8px}
+.td-form input{flex:1;min-width:0;height:40px;padding:0 14px;border-radius:11px;border:1px solid var(--line-2);background:var(--surface);outline:0;font-size:15px}
+.td-form input:focus{border-color:#55555f}
+.td-inv{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:12px}
+.td-inv>div:first-child{display:flex;align-items:center;gap:10px;font-size:14px}
+.td-btns{display:flex;gap:8px}.td-btns button{padding:0 14px;flex:none}
+.td-leave{align-self:flex-start;height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--line-2);font-size:13px;color:var(--ink-3);transition:.2s}
+.td-leave:hover{color:var(--danger);border-color:var(--danger)}
+.t-ok.danger{background:var(--danger);color:#fff}
+.lb-head{margin-bottom:12px}.lb-title{margin:0;font-size:26px;letter-spacing:-.02em}
+.lb{padding:8px}
+.lb-row{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:12px}
+.lb-row.me{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--line-2)}
+.lb-n{width:24px;text-align:center;font-size:14px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.lb-row.top .lb-n{color:var(--ink);font-weight:700}
+.lb-name{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
+.lb-name b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.lb-name em{font-style:normal;font-size:11px;color:var(--ink-3);border:1px solid var(--line-2);border-radius:6px;padding:0 6px}
+.lb-name small{flex-basis:100%;font-size:12px;color:var(--ink-3)}
+.lb-v{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.lb-gap{text-align:center;color:var(--ink-3);font-size:12px;padding:2px 0}
+@media (max-width:600px){.td-av{width:52px;height:52px}.td-flame b{font-size:44px}.tandem{padding:16px}}
