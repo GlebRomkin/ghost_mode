@@ -9,9 +9,26 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="noapp">
 <div class="fog" aria-hidden="true"><i></i><i></i><i></i></div>
 <div class="grain" aria-hidden="true"></div>
+
+<div class="auth" id="authScreen" hidden>
+  <div class="glass auth-card">
+    <img src="assets/gm-icon.png" alt="" class="auth-logo">
+    <h1>Ghost Mode</h1>
+    <p class="auth-sub">Тихо делай своё. Твои дела — только твои.</p>
+    <div class="auth-tabs" id="authTabs"><button data-m="in" class="on">Вход</button><button data-m="up">Регистрация</button></div>
+    <form id="authForm" novalidate>
+      <input id="fEmail" type="email" placeholder="Почта" autocomplete="email">
+      <input id="fUser" type="text" placeholder="Ник (латиница, цифры, _)" autocomplete="username" maxlength="20" hidden>
+      <input id="fPass" type="password" placeholder="Пароль (от 8 символов)" autocomplete="current-password">
+      <input id="fPass2" type="password" placeholder="Повтори пароль" autocomplete="new-password" hidden>
+      <div class="auth-msg" id="authMsg"></div>
+      <button class="go" id="authGo" type="submit">Войти</button>
+    </form>
+  </div>
+</div>
 
 <header>
   <div class="wrap bar">
@@ -26,6 +43,8 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
     </button>
     <div class="menu" id="menu">
+      <div class="acct"><span id="acctLine"></span><small id="syncState"></small></div>
+      <button id="logoutBtn">Выйти из аккаунта</button>
       <button id="wipeBtn" class="danger">✕ Удалить все дела</button>
     </div>
   </div>
@@ -264,9 +283,7 @@
 </div>
 <div class="toast" id="toast"><span id="toastText"></span><button id="toastUndo">Отменить</button></div>
 
-<script src="js/core.js"></script>
-<script src="js/stats.js"></script>
-<script src="js/profile.js"></script>
-<script src="js/main.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/auth.js"></script>
 </body>
 </html>
