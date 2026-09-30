@@ -140,7 +140,7 @@ function metrics(){
     notes: notes.length, notesStreak: nBest, longNote: notes.some(d => data.notes[d].length >= 500) ? 1 : 0, shared: c.shared,
     username: data.profile.username ? 1 : 0, avatarChanged: c.avatarChanged, calUsed: c.calUsed, statsOpened: c.statsOpened,
     reminderSet: c.reminderSet, timerCustom: c.timerCustom,
-    achCount: Object.keys(data.ach).length, duoBest: c.duoBest || 0, soon: 0
+    achCount: Object.keys(data.ach).length, duoBest: c.duoBest || 0, imported: c.imported || 0, soon: 0
   };
 }
 
@@ -189,13 +189,13 @@ const ACH = [
   ['fire1','Тандем','Проведи первый день вдвоём с другом в Тандеме','friend','duoBest',1,{x:30,rest:1}],
   ['fire7','Неделя вдвоём','Держи Тандем 7 дней подряд','friend','duoBest',7,{x:60,rest:1}],
   ['fire30','Месяц вдвоём','Держи Тандем 30 дней подряд','friend','duoBest',30,{x:150,rest:2}],
-  ['import','Импорт','Импортируй расписание из .txt','file','soon',1,{x:20},1],
+  ['import','Импорт','Импортируй дела из .txt','file','imported',1,{x:20}],
 ].map(([id,title,desc,icon,metric,target,r,soon]) => ({id,title,desc,icon,metric,target,r,soon}));
 
 const LEVELS = [[0,'Новичок'],[150,'Тень'],[400,'Призрак'],[900,'Фантом'],[1800,'Дух'],[3200,'Легенда']];
 // убрать достижения, которых больше нет в списке
 for(const id in data.ach) if(!ACH.some(a => a.id === id)) delete data.ach[id];
-const xpTotal = () => ACH.filter(a => data.ach[a.id]).reduce((s,a) => s + a.r.x, 0);
+const xpTotal = () => ACH.filter(a => data.ach[a.id]).reduce((s,a) => s + a.r.x, 0) + (data.questXp || 0);
 function levelOf(xp){ let i = 0; while(i < LEVELS.length-1 && xp >= LEVELS[i+1][0]) i++; return i; }
 const avUnlocked = id => { const a = AVATARS.find(x => x.id === id); if(!a || !a.ex) return true; return ACH.some(x => x.r.av === id && data.ach[x.id]); };
 const rewardText = r => [r.rest ? `+${r.rest} ${plural(r.rest,'возврат','возврата','возвратов')}` : '', r.av ? `аватар «${AVATARS.find(a=>a.id===r.av).name}»` : '', `${r.x} XP`].filter(Boolean).join(' · ');
@@ -334,17 +334,18 @@ $('note').addEventListener('blur', () => checkAch());
 const canNotify = () => 'Notification' in window;
 function renderNotifBtn(){
   const b = $('notifBtn');
-  if(!canNotify()){ b.style.display = 'none'; return; }
-  const p = Notification.permission;
-  b.classList.toggle('on', p === 'granted');
-  $('notifText').textContent = p === 'granted' ? 'Уведомления включены' : p === 'denied' ? 'Уведомления запрещены в браузере' : 'Включить уведомления';
+  if(!canNotify() && !(GMPush.isIOS && GMPush.isIOS())){ b.style.display = 'none'; return; }
+  const p = canNotify() ? Notification.permission : 'default';
+  const on = p === 'granted' && GMPush.ready;
+  b.classList.toggle('on', on);
+  $('notifText').textContent = on ? 'Уведомления включены' : p === 'denied' ? 'Уведомления запрещены в браузере' : 'Включить уведомления';
+  if($('setNotif')) renderSettings();
 }
 $('notifBtn').onclick = async () => {
-  if(!canNotify()) return;
-  try{ await Notification.requestPermission(); }catch(e){}
+  if(GMPush.ready){ toast('Уведомления уже включены. Выключить можно в Профиль → Настройки'); return; }
+  const ok = await GMPush.enable();
   renderNotifBtn();
-  if(Notification.permission === 'granted') notify('Уведомления включены', 'Ghost Mode напомнит о фокусе, перерывах и делах.');
-  else toast('Браузер не дал разрешение — напоминания будут внутри сайта');
+  if(ok) notify('Уведомления включены', 'Ghost Mode напомнит о фокусе, перерывах и делах — даже когда сайт закрыт.');
 };
 function notify(title, body){
   if(canNotify() && Notification.permission === 'granted'){
@@ -376,9 +377,13 @@ setInterval(() => {
   for(const x of data.tasks){
     if(x.date !== t || x.done || !x.remind || data.notified[x.id] === t) continue;
     if(x.remind <= hm){
-      data.notified[x.id] = t; Store.save(data);
-      notify('Напоминание · Ghost Mode', x.title);
-      toast(`⏰ ${x.title}`); beep();
+      const [rh, rm] = x.remind.split(':').map(Number), lateMin = n.getHours()*60 + n.getMinutes() - (rh*60 + rm);
+      if(lateMin > 2){ data.notified[x.id] = t; delete x.remind; commit(); continue; }   // сработало, пока сайт был закрыт
+      data.notified[x.id] = t;
+      delete x.remind;                     // напоминание сработало — время больше не висит на деле
+      if(!GMPush.ready || document.visibilityState === 'visible') notify('Напоминание · Ghost Mode', x.title);
+      if(document.visibilityState === 'visible') GMPush.cancel('task:' + x.id);
+      commit(); toast(`⏰ ${x.title}`); beep();
     }
   }
 }, 15000);

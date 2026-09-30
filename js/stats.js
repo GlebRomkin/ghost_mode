@@ -6,6 +6,13 @@
    ========================================================= */
 const C = { done:'#e6e6ea', undone:'url(#hatch)', undoneCss:'repeating-linear-gradient(135deg,#3a3a42 0 2px,#1c1c20 2px 5px)', grid:'#1c1c20', seq:['#26262b','#48484f','#75757d','#aeaeb5','#f2f2f4'], empty:'#121214' };
 const NS = 'http://www.w3.org/2000/svg';
+// цвета берутся из текущей темы
+const K = {};
+function themeColors(){
+  const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
+  Object.assign(K, { hi:v('--hi'), fg:v('--fg'), bg:v('--bg'), surface:v('--surface'), mid:v('--mid'), line:v('--line'), line2:v('--line-2'), done:v('--done') });
+  C.done = K.done; C.grid = K.line; C.undoneCss = v('--hatch');
+}
 
 function byDay(){
   const m = {};
@@ -25,6 +32,7 @@ $('tableToggle').onclick = () => {
 };
 
 function renderStats(){
+  themeColors();
   const m = byDay(), t = today();
   const days = []; for(let i=range-1;i>=0;i--) days.push(addDays(t,-i));
   let done=0,total=0;
@@ -65,7 +73,7 @@ function drawBars(rows){
   const box = $('chartDays'); box.innerHTML='';
   const W=Math.max(300, Math.round(box.clientWidth)||680), H=W<500?190:220, L=26, R=6, T=10, B=26, pw=W-L-R, ph=H-T-B;
   const svg = el('svg',{viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Сделано и не сделано по дням'}, box);
-  svg.insertAdjacentHTML('afterbegin','<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#1c1c20"/><rect width="2.2" height="6" fill="#4a4a53"/></pattern></defs>');
+  svg.insertAdjacentHTML('afterbegin',`<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="${K.line}"/><rect width="2.2" height="6" fill="${K.line2}"/></pattern></defs>`);
   const top = Math.max(1,...rows.map(r=>r.total));
   const step = [1,2,5,10,20,50,100].find(k => top/k <= 4) || 100;
   const ticks = Math.ceil(top/step), max = step*ticks;
@@ -125,7 +133,7 @@ function drawHeat(m){
       const v = m[day], lv = heatLevel(v), h = HEAT[lv];
       const x = L + w*(cell+g), y = T + d*(cell+g);
       if(lv===5) el('rect',{x,y,width:cell,height:cell,rx:4,fill:h.c,filter:'url(#hglow)',opacity:.6},svg);
-      const rc = el('rect',{x,y,width:cell,height:cell,rx:4,fill:h.c,stroke:day===t?'#fff':(h.stroke||'none'),'stroke-width':day===t?1.5:1},svg);
+      const rc = el('rect',{x,y,width:cell,height:cell,rx:4,fill:h.c,stroke:day===t?K.hi:(h.stroke||'none'),'stroke-width':day===t?1.5:1},svg);
       rc.style.cursor='pointer';
       const html = `<div class="t">${WD[parse(day).getDay()]}, ${human(day)}</div>` + (v&&v.total ? `<div class="r"><i style="background:${h.c}"></i>Сделано ${v.done} из ${v.total} · <b>${Math.round(v.done/v.total*100)}%</b></div>` : 'Дел не было');
       rc.addEventListener('mouseenter', e=>showTip(e,html)); rc.addEventListener('mousemove', moveTip); rc.addEventListener('mouseleave', hideTip);
@@ -146,8 +154,8 @@ function drawWeek(m){
   const H = small ? 240 : 290, T = 34, B = 48, L = 34, R = 8, pw = W-L-R, ph = H-T-B, slot = pw/7, bw = Math.min(64, slot*0.58);
   const svg = el('svg',{viewBox:`0 0 ${W} ${H}`, role:'img','aria-label':'Процент выполнения по дням недели'}, box);
   svg.insertAdjacentHTML('afterbegin',`<defs>
-    <linearGradient id="wkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#8a8a92"/></linearGradient>
-    <linearGradient id="wkt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(255,255,255,.06)"/><stop offset="1" stop-color="rgba(255,255,255,.015)"/></linearGradient>
+    <linearGradient id="wkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${K.hi}"/><stop offset="1" stop-color="${K.mid}"/></linearGradient>
+    <linearGradient id="wkt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(${K.fg},.06)"/><stop offset="1" stop-color="rgba(${K.fg},.015)"/></linearGradient>
     <filter id="wkglow" x="-50%" y="-20%" width="200%" height="140%"><feGaussianBlur stdDeviation="8"/></filter></defs>`);
   [0,25,50,75,100].forEach(v=>{ const y = T+ph - v/100*ph; el('line',{x1:L,x2:W-R,y1:y,y2:y,stroke:C.grid,'stroke-dasharray':v?'2 5':''},svg); const tx=el('text',{x:L-8,y:y+4,'text-anchor':'end'},svg); tx.textContent=v+'%'; });
   const pcts = agg.map(a => a.total ? a.done/a.total : -1);
@@ -157,11 +165,11 @@ function drawWeek(m){
     const x = L + i*slot + (slot-bw)/2, h = Math.max(p*ph, a.total?3:0);
     el('path',{d:topRounded(x, T, bw, ph, 10), fill:'url(#wkt)'},svg);
     if(a.total){
-      if(i===bestI) el('path',{d:topRounded(x, T+ph-h, bw, h, 10), fill:'#fff', opacity:.35, filter:'url(#wkglow)'},svg);
+      if(i===bestI) el('path',{d:topRounded(x, T+ph-h, bw, h, 10), fill:K.hi, opacity:.35, filter:'url(#wkglow)'},svg);
       el('path',{d:topRounded(x, T+ph-h, bw, h, 10), fill: i===bestI ? 'url(#wkg)' : '#cfcfd4', opacity: i===bestI?1:.85},svg);
     }
     const vx = el('text',{x:x+bw/2,y:T+ph-h-10,'text-anchor':'middle'},svg); vx.textContent = a.total ? Math.round(p*100)+'%' : '—';
-    vx.style.cssText = `fill:${a.total?'#fff':'var(--ink-3)'};font-size:${small?12:15}px;font-weight:700`;
+    vx.style.cssText = `fill:${a.total?'var(--hi)':'var(--ink-3)'};font-size:${small?12:15}px;font-weight:700`;
     const lx = el('text',{x:x+bw/2,y:H-B+20,'text-anchor':'middle'},svg); lx.textContent = s; lx.style.cssText='fill:var(--ink);font-size:13px;font-weight:600';
     const cx = el('text',{x:x+bw/2,y:H-B+38,'text-anchor':'middle'},svg); cx.textContent = a.total ? `${a.done} из ${a.total}` : 'нет дел';
     cx.style.cssText = `fill:var(--ink-3);font-size:${small?10:12}px`;
@@ -192,8 +200,8 @@ function drawLine(rows){
   const W = Math.max(300, Math.round(box.clientWidth)||680), H = W<500?200:250, L=38, R=12, T=16, B=28, pw=W-L-R, ph=H-T-B;
   const svg = el('svg',{viewBox:`0 0 ${W} ${H}`, role:'img','aria-label':'Динамика процента выполнения'}, box);
   svg.insertAdjacentHTML('afterbegin',`<defs>
-    <linearGradient id="lnArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(255,255,255,.22)"/><stop offset="1" stop-color="rgba(255,255,255,0)"/></linearGradient>
-    <linearGradient id="lnStroke" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8a8a92"/><stop offset="1" stop-color="#ffffff"/></linearGradient>
+    <linearGradient id="lnArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(${K.fg},.22)"/><stop offset="1" stop-color="rgba(${K.fg},0)"/></linearGradient>
+    <linearGradient id="lnStroke" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${K.mid}"/><stop offset="1" stop-color="${K.hi}"/></linearGradient>
     <filter id="lnGlow" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="5"/></filter></defs>`);
   [0,25,50,75,100].forEach(v=>{ const y=T+ph-v/100*ph; el('line',{x1:L,x2:W-R,y1:y,y2:y,stroke:C.grid,'stroke-dasharray':v?'2 5':''},svg); const tx=el('text',{x:L-8,y:y+4,'text-anchor':'end'},svg); tx.textContent=v+'%'; });
   const n = rows.length, xAt = i => L + (n===1 ? pw/2 : i*pw/(n-1));
@@ -202,17 +210,17 @@ function drawLine(rows){
   rows.forEach((r,i)=>{ if(i % labelEvery === (n-1) % labelEvery){ const tx=el('text',{x:xAt(i),y:H-8,'text-anchor':'middle'},svg); tx.textContent = n<=7 ? WDS[parse(r.d).getDay()] : short(r.d); } });
   if(!pts.length){ const tx=el('text',{x:W/2,y:T+ph/2,'text-anchor':'middle'},svg); tx.textContent='Пока нет данных — отмечай дела, и линия появится'; return; }
   const avg = pts.reduce((s,p)=>s+(T+ph-p[1])/ph,0)/pts.length, ay = T+ph-avg*ph;
-  el('line',{x1:L,x2:W-R,y1:ay,y2:ay,stroke:'rgba(255,255,255,.28)','stroke-dasharray':'6 6'},svg);
+  el('line',{x1:L,x2:W-R,y1:ay,y2:ay,stroke:`rgba(${K.fg},.28)`,'stroke-dasharray':'6 6'},svg);
   const at = el('text',{x:W-R,y:ay-6,'text-anchor':'end'},svg); at.textContent = `среднее ${Math.round(avg*100)}%`; at.style.fill='var(--ink-2)';
   const d = smoothPath(pts.map(p=>[p[0],p[1]]));
   el('path',{d:`${d} L${pts[pts.length-1][0]},${T+ph} L${pts[0][0]},${T+ph} Z`, fill:'url(#lnArea)'},svg);
-  el('path',{d, fill:'none', stroke:'#fff','stroke-width':4, opacity:.35, filter:'url(#lnGlow)'},svg);
+  el('path',{d, fill:'none', stroke:K.hi,'stroke-width':4, opacity:.35, filter:'url(#lnGlow)'},svg);
   const line = el('path',{d, fill:'none', stroke:'url(#lnStroke)','stroke-width':2.5,'stroke-linecap':'round','stroke-linejoin':'round'},svg);
   try{ const len = line.getTotalLength(); line.style.strokeDasharray = len; line.style.strokeDashoffset = len; line.getBoundingClientRect(); line.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(.3,.7,.2,1)'; line.style.strokeDashoffset = 0; }catch(e){}
-  if(pts.length <= 31) pts.forEach(p => el('circle',{cx:p[0],cy:p[1],r:3.5,fill:'#0b0b0d',stroke:'#fff','stroke-width':2},svg));
-  const last = pts[pts.length-1]; el('circle',{cx:last[0],cy:last[1],r:9,fill:'#fff',opacity:.18},svg); el('circle',{cx:last[0],cy:last[1],r:4.5,fill:'#fff'},svg);
-  const cross = el('line',{x1:0,x2:0,y1:T,y2:T+ph,stroke:'rgba(255,255,255,.35)','stroke-dasharray':'3 3',opacity:0},svg);
-  const dot = el('circle',{r:6,fill:'#fff',stroke:'#050506','stroke-width':2,opacity:0},svg);
+  if(pts.length <= 31) pts.forEach(p => el('circle',{cx:p[0],cy:p[1],r:3.5,fill:K.surface,stroke:K.hi,'stroke-width':2},svg));
+  const last = pts[pts.length-1]; el('circle',{cx:last[0],cy:last[1],r:9,fill:K.hi,opacity:.18},svg); el('circle',{cx:last[0],cy:last[1],r:4.5,fill:K.hi},svg);
+  const cross = el('line',{x1:0,x2:0,y1:T,y2:T+ph,stroke:`rgba(${K.fg},.35)`,'stroke-dasharray':'3 3',opacity:0},svg);
+  const dot = el('circle',{r:6,fill:K.hi,stroke:K.bg,'stroke-width':2,opacity:0},svg);
   const hit = el('rect',{x:L,y:T,width:pw,height:ph,fill:'transparent'},svg);
   hit.addEventListener('mousemove', e=>{
     const r = svg.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width;

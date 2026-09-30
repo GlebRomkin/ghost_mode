@@ -3,9 +3,15 @@
 const GM_SB_URL = 'https://sveeyihjszzfqrqgasjq.supabase.co';
 const GM_SB_KEY = 'sb_publishable_kFhKa-XQ2bSHWsnWUrPzJg_I6jXiSRn'; // публичный ключ, его можно держать в коде
 const LEGACY_KEY = 'veraxis-todo-v1';
-const APP_SCRIPTS = ['js/core.js','js/stats.js','js/profile.js','js/main.js','js/social.js'];
+const APP_SCRIPTS = ['js/core.js','js/stats.js','js/profile.js','js/push.js','js/main.js','js/social.js','js/quests.js','js/import.js','js/settings.js','js/tour.js'];
 
+const SITE = location.origin + location.pathname.replace(/index\.html$/, '');
 const $a = id => document.getElementById(id);
+// что пришло в ссылке из письма (читаем до того, как supabase-js очистит адрес)
+const LINK = (() => {
+  const h = new URLSearchParams(location.hash.slice(1)), q = new URLSearchParams(location.search);
+  return { type: h.get('type') || q.get('type'), err: h.get('error_code') || q.get('error_code') || h.get('error') || q.get('error') };
+})();
 let sb = null, me = null;
 
 /* ---------- облако ---------- */
@@ -77,6 +83,7 @@ async function enter(session){
   if(window.GMCloud.pending) window.GMCloud.flush(d); else window.GMCloud.setState('синхронизировано');
   $a('logoutBtn').onclick = async () => {
     await window.GMCloud.flush();
+    if(window.GMPush) await GMPush.disable();
     await sb.auth.signOut();
     try{ localStorage.removeItem(window.GM_KEY); }catch(e){}
     location.reload();
@@ -118,26 +125,75 @@ async function submit(e){
       if(pass !== $a('fPass2').value) throw { message: 'Пароли не совпадают', raw: true };
       const free = await sb.rpc('username_free', { n: user });
       if(free.data === false) throw { message: 'Этот ник уже занят', raw: true };
-      const r = await sb.auth.signUp({ email, password: pass, options: { data: { username: user } } });
+      const r = await sb.auth.signUp({ email, password: pass, options: { data: { username: user }, emailRedirectTo: SITE } });
       if(r.error) throw r.error;
-      if(!r.data.session){ authMsg('Почти готово: подтверди почту по письму и войди.', true); setMode('in'); authMsg('Почти готово: подтверди почту по письму и войди.', true); return; }
+      if(!r.data.session){
+        setMode('in'); $a('fEmail').value = email;
+        authMsg(`Письмо отправлено на ${email}. Открой его и нажми «Подтвердить почту» — потом войди здесь. Письма нет? Проверь «Спам».`, true);
+        $a('resendBtn').hidden = false; return;
+      }
       await enter(r.data.session);
     } else {
       const r = await sb.auth.signInWithPassword({ email, password: pass });
       if(r.error) throw r.error;
       await enter(r.data.session);
     }
-  }catch(err){ authMsg(err.raw ? err.message : humanErr(err.message)); }
+  }catch(err){
+    authMsg(err.raw ? err.message : humanErr(err.message));
+    if(/confirm/i.test(err.message || '')) $a('resendBtn').hidden = false;
+  }
   finally{ btn.disabled = false; }
 }
 
 (async function boot(){
   if(!window.supabase){ authMsg('Не удалось загрузить модуль входа. Обнови страницу.'); return; }
-  sb = window.supabase.createClient(GM_SB_URL, GM_SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+  sb = window.supabase.createClient(GM_SB_URL, GM_SB_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' } });
   $a('authTabs').addEventListener('click', e => { const b = e.target.closest('button'); if(b) setMode(b.dataset.m); });
   $a('authForm').addEventListener('submit', submit);
   setMode('in');
+  $a('forgotBtn').onclick = async () => {
+    const email = $a('fEmail').value.trim();
+    if(!email) return authMsg('Впиши почту — пришлём ссылку для нового пароля');
+    const r = await sb.auth.resetPasswordForEmail(email, { redirectTo: SITE });
+    authMsg(r.error ? humanErr(r.error.message) : 'Ссылка для нового пароля отправлена на почту', !r.error);
+  };
+  $a('resendBtn').onclick = async () => {
+    const email = $a('fEmail').value.trim(); if(!email) return authMsg('Впиши почту');
+    const r = await sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: SITE } });
+    authMsg(r.error ? humanErr(r.error.message) : 'Письмо отправлено ещё раз', !r.error);
+  };
+  const start = async s => { try{ await enter(s); }catch(e){ authMsg('Не удалось загрузить данные. Обнови страницу.'); $a('authScreen').hidden = false; } };
   const { data: { session } } = await sb.auth.getSession();
-  if(session){ try{ await enter(session); }catch(e){ authMsg('Не удалось загрузить данные. Обнови страницу.'); $a('authScreen').hidden = false; } }
-  else { $a('authScreen').hidden = false; }
+  if(LINK.err){
+    history.replaceState(null, '', SITE);
+    $a('authScreen').hidden = false;
+    authMsg(/expired/i.test(LINK.err) ? 'Ссылка из письма устарела или уже использована. Войди — или отправь письмо ещё раз.' : 'Ссылка из письма не сработала. Попробуй войти или запроси письмо ещё раз.');
+    $a('resendBtn').hidden = false;
+    return;
+  }
+  if(session && LINK.type === 'recovery'){
+    history.replaceState(null, '', SITE);
+    $a('recoverScreen').hidden = false;
+    $a('recoverForm').onsubmit = async e => {
+      e.preventDefault();
+      const p1 = $a('rPass').value, p2 = $a('rPass2').value, m = $a('rMsg');
+      if(p1.length < 8){ m.textContent = 'Пароль должен быть не короче 8 символов'; return; }
+      if(p1 !== p2){ m.textContent = 'Пароли не совпадают'; return; }
+      const r = await sb.auth.updateUser({ password: p1 });
+      if(r.error){ m.textContent = humanErr(r.error.message); return; }
+      $a('recoverScreen').hidden = true; start(session);
+    };
+    return;
+  }
+  if(session && (LINK.type === 'signup' || LINK.type === 'email' || LINK.type === 'invite')){
+    history.replaceState(null, '', SITE);
+    const pr = await sb.from('profiles').select('username').eq('id', session.user.id).maybeSingle();
+    const nick = pr.data && pr.data.username;
+    $a('wlTitle').textContent = nick ? `Добро пожаловать, @${nick}` : 'Добро пожаловать';
+    $a('welcomeScreen').hidden = false;
+    $a('wlGo').onclick = () => { $a('welcomeScreen').hidden = true; start(session); };
+    return;
+  }
+  if(session) start(session);
+  else $a('authScreen').hidden = false;
 })();

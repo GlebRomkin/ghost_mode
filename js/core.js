@@ -159,10 +159,10 @@ function item(x, isPast, i){
   }
   const badge = isPast && !x.done ? `<span class="missed">${x.carried ? 'перенесено' : 'не сделано'}</span>` : '';
   return `<li class="task ${x.done?'done':''} ${x.prio?'prio':''} ${isPast?'locked':''} ${isFuture?'future':''}" data-id="${x.id}" style="--i:${i}">
-    <button class="check" data-a="toggle" ${isPast||isFuture?'disabled':''} aria-label="${x.done?'Отметить несделанным':'Отметить сделанным'}" title="${isPast?'Прошедший день закрыт':isFuture?'Отметить можно только в этот день':''}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#050506" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+    <button class="check" data-a="toggle" ${isPast||isFuture?'disabled':''} aria-label="${x.done?'Отметить несделанным':'Отметить сделанным'}" title="${isPast?'Прошедший день закрыт':isFuture?'Отметить можно только в этот день':''}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
     ${x.prio?'<svg class="flag" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M5 21V4h11l-1.5 4L16 12H7v9z"/></svg>':''}
     <span class="title">${esc(x.title)}</span>
-    ${x.remind && !x.done && !isPast ? `<span class="bell"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/></svg>${x.remind}</span>` : ''}
+    ${x.remind && !x.done && !isPast && !(x.date === today() && x.remind < `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`) ? `<span class="bell"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/></svg>${x.remind}</span>` : ''}
     ${badge}
     ${isPast ? `<span class="lock-ic" title="Прошедший день закрыт">${ic.lock}</span>` : ''}
     <span class="acts">${acts}</span>

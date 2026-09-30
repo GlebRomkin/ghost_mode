@@ -1,0 +1,29 @@
+<!-- Supabase → Authentication → Emails → Templates → Confirm signup
+     Тема письма (Subject): Подтверди почту — Ghost Mode
+     Вставь всё ниже в поле «Message body» (Source) и нажми Save. -->
+<div style="margin:0;padding:0;background:#050506">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#050506;padding:40px 16px;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif">
+  <tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#0d0d0f;border:1px solid #2b2b31;border-radius:20px">
+      <tr><td align="center" style="padding:36px 32px 8px">
+        <img src="https://ghost-mode-7ezo.onrender.com/assets/icon-192.png" width="72" height="72" alt="Ghost Mode" style="display:block;border-radius:18px;border:0">
+      </td></tr>
+      <tr><td align="center" style="padding:18px 32px 0;color:#f2f2f4;font-size:24px;font-weight:700;letter-spacing:-.02em">Подтверди почту</td></tr>
+      <tr><td align="center" style="padding:10px 32px 0;color:#a3a3ab;font-size:15px;line-height:1.55">
+        Остался один шаг, чтобы войти в Ghost Mode.<br>Нажми кнопку — почта подтвердится, и откроется сайт.
+      </td></tr>
+      <tr><td align="center" style="padding:28px 32px 8px">
+        <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#f2f2f4;color:#050506;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px">Подтвердить почту</a>
+      </td></tr>
+      <tr><td align="center" style="padding:18px 32px 0;color:#5f5f68;font-size:12px;line-height:1.55">
+        Если кнопка не нажимается, скопируй ссылку в браузер:<br>
+        <a href="{{ .ConfirmationURL }}" style="color:#a3a3ab;word-break:break-all">{{ .ConfirmationURL }}</a>
+      </td></tr>
+      <tr><td align="center" style="padding:24px 32px 32px;color:#5f5f68;font-size:12px;line-height:1.55;border-top:1px solid #1c1c20">
+        Ты получил это письмо, потому что кто-то указал этот адрес при регистрации в Ghost Mode.<br>Если это был не ты — просто ничего не делай.
+      </td></tr>
+    </table>
+    <div style="padding:18px 0 0;color:#5f5f68;font-size:12px">Ghost Mode · Разработано Veraxis</div>
+  </td></tr>
+</table>
+</div>

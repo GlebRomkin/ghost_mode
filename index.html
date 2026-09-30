@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ghost Mode</title>
+<title>GM — Ghost Mode</title>
 <link rel="icon" type="image/png" href="assets/gm-icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
+<script>try{var t=localStorage.getItem('gm-theme');if(t&&t!=='night')document.documentElement.dataset.theme=t;}catch(e){}</script>
 </head>
 <body class="noapp">
 <div class="fog" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -33,6 +34,31 @@
       <input id="fPass2" type="password" placeholder="Повтори пароль" autocomplete="new-password" hidden>
       <div class="auth-msg" id="authMsg"></div>
       <button class="go" id="authGo" type="submit">Войти</button>
+      <div class="auth-links"><button type="button" id="forgotBtn">Забыли пароль?</button><button type="button" id="resendBtn" hidden>Отправить письмо ещё раз</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="auth" id="welcomeScreen" hidden>
+  <div class="glass auth-card welcome-card">
+    <div class="wl-ring"><img src="assets/gm-icon.png" alt=""></div>
+    <div class="wl-check"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Почта подтверждена</div>
+    <h1 id="wlTitle">Добро пожаловать</h1>
+    <p class="auth-sub" id="wlSub">Аккаунт активирован. Тихо делай своё — Ghost Mode сохранит каждый шаг.</p>
+    <button class="go wl-go" id="wlGo">Начать</button>
+  </div>
+</div>
+
+<div class="auth" id="recoverScreen" hidden>
+  <div class="glass auth-card">
+    <img src="assets/gm-icon.png" alt="" class="auth-logo">
+    <h1>Новый пароль</h1>
+    <p class="auth-sub">Придумай новый пароль для входа в Ghost Mode.</p>
+    <form id="recoverForm" novalidate>
+      <input id="rPass" type="password" placeholder="Новый пароль (от 8 символов)" autocomplete="new-password">
+      <input id="rPass2" type="password" placeholder="Повтори пароль" autocomplete="new-password">
+      <div class="auth-msg" id="rMsg"></div>
+      <button class="go" type="submit">Сохранить пароль</button>
     </form>
   </div>
 </div>
@@ -44,7 +70,7 @@
       <button class="tab on" data-view="today"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>День</span></button>
       <button class="tab" data-view="stats"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Статистика</span></button>
       <button class="tab" data-view="album"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg><span>Альбом</span></button>
-      <button class="tab" data-view="friends"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 5.2a3 3 0 0 1 0 5.6M18 14.8c1.8.7 3 2.4 3 5.2"/></svg><span>Друзья</span></button>
+      <button class="tab" data-view="friends"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 5.2a3 3 0 0 1 0 5.6M18 14.8c1.8.7 3 2.4 3 5.2"/></svg><span>Друзья</span><i class="tab-dot" id="frDot" hidden></i></button>
       <button class="tab" data-view="profile"><img class="tab-av" id="tabAv" alt=""><span>Профиль</span></button>
     </nav>
     <button class="icon-btn" id="menuBtn" aria-label="Меню">
@@ -70,6 +96,11 @@
       <div class="sc-foot"><span>Последние 14 дней</span><span id="sBest">рекорд 0</span></div>
     </div>
 
+    <div class="glass sc quest-card" id="questCard">
+      <div class="sc-h"><span>Квесты дня</span><span class="q-left" id="qLeft"></span></div>
+      <div id="qList"></div>
+    </div>
+
     <div class="glass sc">
       <div class="sc-h cal-h">
         <span id="calTitle">—</span>
@@ -83,7 +114,7 @@
     <!-- DAY -->
     <section class="view on" id="view-today">
       <div class="hero glass">
-        <svg class="hero-ghost" viewBox="280 200 464 640" aria-hidden="true"><path d="M302,780 V440 A210,210 0 0 1 722,440 V780 q-70,58.8 -140,0 q-70,58.8 -140,0 q-70,58.8 -140,0Z" fill="none" stroke="#fff" stroke-width="10"/><path d="M376,452 L464,472 L464,500 L376,484Z M648,452 L560,472 L560,500 L648,484Z" fill="#fff"/></svg>
+        <svg class="hero-ghost" viewBox="280 200 464 640" aria-hidden="true"><path d="M302,780 V440 A210,210 0 0 1 722,440 V780 q-70,58.8 -140,0 q-70,58.8 -140,0 q-70,58.8 -140,0Z" fill="none" stroke="currentColor" stroke-width="10"/><path d="M376,452 L464,472 L464,500 L376,484Z M648,452 L560,472 L560,500 L648,484Z" fill="currentColor"/></svg>
         <div class="hero-main">
           <div class="kicker"><span class="live"></span><span id="kicker">Сегодня</span></div>
           <h1 id="dayTitle">—</h1>
@@ -100,7 +131,7 @@
         </div>
         <div class="ring">
           <svg viewBox="0 0 120 120" aria-hidden="true">
-            <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#77777f"/></linearGradient></defs>
+            <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--hi)"/><stop offset="1" style="stop-color:var(--mid)"/></linearGradient></defs>
             <circle cx="60" cy="60" r="52" class="ring-track"/>
             <circle cx="60" cy="60" r="52" class="ring-fill" id="ringFill"/>
           </svg>
@@ -116,6 +147,8 @@
         <button type="button" class="prio-toggle" id="prioBtn" title="Важное">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5 21V4h11l-1.5 4L16 12H7v9z"/></svg>
         </button>
+        <button type="button" class="prio-toggle" id="importBtn" title="Импорт дел из .txt"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M12 18v-6M9 15l3 3 3-3"/></svg></button>
+        <input type="file" id="importFile" accept=".txt,text/plain" hidden>
         <button class="go" type="submit">Добавить</button>
       </form>
       <div class="hint"><kbd>/</kbd> — быстро добавить · <kbd>←</kbd><kbd>→</kbd> — листать дни · двойной клик — редактировать</div>
@@ -207,10 +240,20 @@
       <div class="stats-head">
         <div>
           <h1>Друзья</h1>
-          <p class="page-sub">Тандем с другом и рейтинг. В рейтинге видны только ник, уровень и очки.</p>
+          <p class="page-sub">Друзья, Тандем и рейтинг. Другим видны только твой ник, аватар, уровень и очки.</p>
         </div>
       </div>
       <div id="tandem" class="glass tandem"></div>
+      <div class="glass fr-card" id="frCard">
+        <div class="td-head"><b>Друзья</b><span id="frCountTxt"></span></div>
+        <form class="td-form" id="frSearchForm" autocomplete="off">
+          <input id="frSearch" placeholder="Поиск по нику…" maxlength="21" autocapitalize="off" spellcheck="false">
+          <button class="btn-w" type="submit">Поиск</button>
+        </form>
+        <div id="frResults"></div>
+        <div id="frRequests"></div>
+        <div id="frList"></div>
+      </div>
       <div class="stats-head lb-head">
         <div><h2 class="lb-title">Рейтинг</h2></div>
         <div class="seg" id="lbSeg"><button data-by="score" class="on">Очки</button><button data-by="streak">Серия</button></div>
@@ -219,6 +262,8 @@
     </section>
 
     <section class="view" id="view-profile">
+      <div class="seg prof-tabs" id="profTabs"><button data-p="main" class="on">Профиль</button><button data-p="friends">Друзья <span class="pf-n" id="pfCount"></span></button><button data-p="settings">Настройки</button></div>
+      <div id="pMain">
       <div class="prof glass">
         <div class="prof-av" id="profAv"></div>
         <div class="prof-main">
@@ -231,6 +276,7 @@
           <div><b id="pAch">0</b><span>достижений</span></div>
           <div><b id="pRest">0</b><span>возвратов серии</span></div>
           <div><b id="pDone">0</b><span>дел сделано</span></div>
+          <div class="pf-link" id="pFriendsStat"><b id="pFriends">0</b><span>друзей</span></div>
         </div>
       </div>
 
@@ -254,6 +300,9 @@
         </div>
         <div class="ach-grid" id="achGrid"></div>
       </div>
+      </div>
+      <div id="pFriendsBox" hidden></div>
+      <div id="pSettings" hidden></div>
     </section>
 
   </div>
@@ -300,6 +349,23 @@
     <b>Выйти из Тандема?</b>
     <span class="modal-sub" id="leaveText"></span>
     <div class="modal-btns"><button class="t-def" id="leaveNo">Остаться</button><button class="t-ok danger" id="leaveYes">Выйти</button></div>
+  </div>
+</div>
+
+<div class="modal" id="askModal" hidden>
+  <div class="modal-card glass">
+    <b id="askTitle"></b>
+    <span class="modal-sub" id="askText"></span>
+    <div class="modal-btns"><button class="t-def" id="askNo">Отмена</button><button class="t-ok" id="askYes">Да</button></div>
+  </div>
+</div>
+
+<div class="modal" id="impModal" hidden>
+  <div class="modal-card glass imp-card">
+    <b>Импорт из .txt</b>
+    <span class="modal-sub" id="impInfo"></span>
+    <div class="imp-list" id="impList"></div>
+    <div class="modal-btns"><button class="t-def" id="impNo">Отмена</button><button class="t-ok" id="impYes">Добавить</button></div>
   </div>
 </div>
 
